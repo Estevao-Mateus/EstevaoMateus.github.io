@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teste de QI</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #1a1a1d, #0f0f10);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      width: 100%;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+    .container {
+      background: #222;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin-bottom: 20px;
+      background: linear-gradient(to right, #0ff, #09f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 2rem;
+    }
+    select, input, button {
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      margin-top: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #0ff;
+      color: #000;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px #0ff;
+    }
+    button:active {
+      transform: scale(0.95);
+      box-shadow: 0 0 5px #0ff;
+    }
+    .question {
+      margin: 20px 0;
+    }
+    .options button {
+      display: block;
+      margin: 8px auto;
+      background-color: #333;
+      color: #0ff;
+      width: 100%;
+      max-width: 300px;
+    }
+    .result {
+      font-size: 1.5rem;
+      color: #0f0;
+    }
+    canvas {
+      margin-top: 20px;
+      width: 100% !important;
+      height: auto !important;
+      max-height: 300px;
+    }
+    .question-number {
+      font-size: 1.2rem;
+      color: #0ff;
+      margin-bottom: 10px;
+    }
+    #timer {
+      font-size: 1rem;
+      color: #ff0;
+      margin-bottom: 10px;
+    }
+    #quiz {
+      opacity: 1;
+      transition: opacity 0.5s ease-in;
+    }
+    #quiz.fade-in {
+      opacity: 0;
+      animation: fadeIn 0.5s ease-in forwards;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+        width: 95%;
+      }
+      h1 {
+        font-size: 1.5rem;
+      }
+      select, input, button {
+        font-size: 14px;
+        padding: 8px;
+      }
+      .result {
+        font-size: 1.2rem;
+      }
+      .question-number {
+        font-size: 1rem;
+      }
+    }
+    @media (max-width: 400px) {
+      .container {
+        padding: 10px;
+      }
+      h1 {
+        font-size: 1.2rem;
+      }
+      select, input, button {
+        font-size: 12px;
+        padding: 6px;
+      }
+      .options button {
+        max-width: 100%;
+      }
+      canvas {
+        max-height: 200px;
+      }
+      .question-number {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container" id="principal">
+    <h1>Teste de QI</h1>
+    <div id="opcoesIniciais">
+      <label for="nivel">Escolha o nível:</label>
+      <select id="nivel">
+        <option value="iniciante">Iniciante (5 perguntas) - QI até 60</option>
+        <option value="intermediario">Intermediário (10 perguntas) - QI até 110</option>
+        <option value="avancado">Avançado (20 perguntas) - QI até 160</option>
+      </select>
+      <label for="modo">Escolha o modo:</label>
+      <select id="modo">
+        <option value="teste">Modo Teste</option>
+        <option value="pratica">Modo Prática</option>
+      </select>
+      <button onclick="iniciarTeste()" id="btnIniciar">Iniciar Teste</button>
+    </div>
+
+    <button onclick="voltarMenu()" id="btnVoltar" style="display:none">Voltar</button>
+
+    <div id="quiz"></div>
+    <div class="result" id="resultado"></div>
+    <canvas id="graficoQI" style="display:none"></canvas>
+  </div>
+
+  <script>
+    const perguntasPorNivel = {
+      iniciante: [
+        { q: 'Se um pato põe um ovo em cima da fronteira entre dois países, a quem pertence o ovo?', a: ['Aos países da esquerda', 'Aos países da direita', 'Nenhum', 'Patos não põem ovos'], c: 2 },
+        { q: 'Qual número vem a seguir: 2, 5, 10, 17, 26...?', a: ['35', '37', '39', '45'], c: 0 },
+        { q: 'O que vem a seguir: Z, X, V, T, ...?', a: ['S', 'Q', 'R', 'P'], c: 2 },
+        { q: 'Um relógio atrasa 5 minutos por hora. Se ele é acertado às 8h, que horas ele marcará quando for meio-dia?', a: ['11h20', '11h40', '12h', '12h20'], c: 1 },
+        { q: 'Se Pedro está a leste de João e Maria está ao norte de Pedro, onde está Maria em relação a João?', a: ['Nordeste', 'Noroeste', 'Sudeste', 'Sudoeste'], c: 0 },
+        { q: 'Um número dividido por 1 é igual a ele mesmo. Qual é a exceção?', a: ['0', '0.5', '2', 'Nenhuma exceção'], c: 3 },
+        { q: 'Se Ana+Nana = 202. Qual é o valor de N?', a: ['200', '0', '2', '100'], c: 1 },
+        { q: 'Um ônibus tem 40 passageiros. Em cada parada, 5 saem e 3 entram. Após 4 paradas, quantos há?', a: ['40', '38', '32', '28'], c: 2 },
+        { q: 'O que é maior: metade de 2 + 2 ou 2 + metade de 2?', a: ['A primeira', 'Nenhum', 'Iguais', 'A segunda'], c: 2 },
+        { q: 'Se todos os gatos são mamíferos e alguns mamíferos são pretos, podemos afirmar que:', a: ['Todos os gatos são pretos', 'Alguns gatos são pretos', 'Nenhum gato é preto', 'Nada pode ser concluído'], c: 3 },
+        { q: 'Joana está à esquerda de Pedro. Pedro está à esquerda de Carlos. Quem está mais à direita?', a: ['Joana', 'Pedro', 'Carlos', 'Impossível saber'], c: 2 },
+        { q: 'Se “todos os livros estão na estante” for verdade, e “este livro não está na estante” também for verdade, então:', a: ['Todos os livros estão na estante', 'A afirmação é contraditória', 'Este livro é especial', 'A estante está cheia'], c: 1 },
+        { q: 'Se Maria está com fome, ela come. Ela não está comendo. Logo:', a: ['Ela está com fome', 'Ela já comeu', 'Ela não está com fome', 'Ela está dormindo'], c: 2 },
+        { q: 'Se algo é um triângulo, então tem três lados. Isso significa que:', a: ['Tudo que tem três lados é um triângulo', 'Nenhum triângulo tem três lados', 'Alguns triângulos não têm três lados', 'Todo triângulo tem três lados'], c: 3 },
+        { q: 'Ana gosta de tudo que é doce. Mel é doce. Logo:', a: ['Ana não gosta de mel', 'Ana gosta de mel', 'Mel é salgado', 'Ana só gosta de mel'], c: 1 },
+        { q: '“Se não estiver chovendo, saio.” Está chovendo. Logo:', a: ['Ele saiu', 'Ele não saiu', 'Ele está indeciso', 'Nada pode ser concluído'], c: 3 },
+        { q: 'Todo peixe vive na água. Um golfinho não é um peixe. Isso significa que:', a: ['Golfinhos vivem na terra', 'Golfinhos não vivem na água', 'Golfinhos são peixes', 'Nada pode ser concluído sobre onde o golfinho vive'], c: 3 },
+        { q: '“Nenhum inseto é mamífero.” Isso significa que:', a: ['Alguns mamíferos são insetos', 'Todos os mamíferos são insetos', 'Mamíferos não são insetos', 'Insetos são mamíferos às vezes'], c: 2 },
+        { q: 'Pedro diz: “Se eu não estudar, vou mal.” Ele foi bem. Logo:', a: ['Ele estudou', 'Ele não estudou', 'Ele mentiu', 'Nada pode ser concluído'], c: 0 },
+        { q: 'Se tudo que brilha não é ouro, então:', a: ['Tudo que brilha é ouro', 'Nada que brilha é ouro', 'Algumas coisas que brilham são ouro', 'Algo que brilha pode não ser ouro'], c: 3 },
+        { q: 'Se todo cachorro late, e esse animal não late, então:', a: ['Ele é um cachorro', 'Ele não é um cachorro', 'Ele pode ser um cachorro mudo', 'Ele é um gato'], c: 1 },
+        { q: '“Nenhum A é B” e “Alguns B são C”. Logo:', a: ['Alguns C são A', 'Nenhum C é A', 'Nada pode ser concluído entre A e C', 'Todos os C são A'], c: 2 },
+        { q: 'Se tudo que é quadrado tem quatro lados, e esta forma tem quatro lados, então:', a: ['Ela é um quadrado', 'Ela pode ser um quadrado', 'Ela não é um quadrado', 'Nada pode ser concluído'], c: 1 },
+        { q: 'Clara diz: “Se eu estiver ocupada, não atendo.” Ela não atendeu. O que isso implica?', a: ['Ela está ocupada', 'Ela não está ocupada', 'Ela não ouviu o telefone', 'Nada pode ser concluído'], c: 3 },
+        { q: 'Um ciclo começa na segunda e acontece a cada 4 dias. Qual o próximo dia?', a: ['Segunda', 'Sexta', 'Sábado', 'Domingo'], c: 1 },
+        { q: 'Qual é o oposto de quente?', a: ['Frio', 'Gelado', 'Morno', 'Seco'], c: 0 }
+      ],
+      intermediario: [
+        { q: 'Se 3 gatos matam 3 ratos em 3 minutos, quantos gatos são necessários para matar 100 ratos em 100 minutos?', a: ['10', '3', '9', 'Nenhum'], c: 1 },
+        { q: 'Todos os corvos são pássaros. Alguns pássaros não são pretos. Podemos concluir que:', a: ['Todos os corvos são pretos', 'Alguns corvos não são pretos', 'Todos os pássaros são corvos', 'Não se pode concluir nada'], c: 3 },
+        { q: 'Ana sempre mente. Ela diz: “Estou mentindo agora.” Isso significa que:', a: ['Ela está dizendo a verdade', 'Ela está mentindo', 'A afirmação é um paradoxo', 'Ela às vezes mente'], c: 2 },
+        { q: 'Se todos os artistas são criativos, e nenhum criativo é preguiçoso, podemos concluir que:', a: ['Todos os artistas são preguiçosos', 'Nenhum artista é preguiçoso', 'Alguns criativos são artistas', 'Nenhuma das anteriores'], c: 1 },
+        { q: 'Carlos está olhando para Ana. Ana está olhando para Bruno. Carlos é casado, Bruno é solteiro. Ana, não sabemos. Há uma pessoa casada olhando para uma solteira?', a: ['Sim', 'Não', 'Depende', 'Impossível saber'], c: 0 },
+        { q: '“Se chover, não saio.” Está seco lá fora. O que podemos concluir?', a: ['Ele saiu', 'Ele não saiu', 'Ele sempre sai', 'Nada pode ser concluído'], c: 3 },
+        { q: 'Duas afirmações: (1) A segunda é verdadeira. (2) A primeira é falsa. Qual é a verdade?', a: ['Ambas são verdadeiras', 'Ambas são falsas', 'A primeira é verdadeira', 'É um paradoxo'], c: 3 },
+        { q: 'Todo objeto que é invisível não pode ser visto. Algumas coisas que não podem ser vistas são reais. Logo:', a: ['Tudo que é real é invisível', 'Tudo que é invisível é real', 'Algumas coisas invisíveis são reais', 'Nada pode ser concluído'], c: 2 },
+        { q: 'Se Maria é mais alta que Joana, e Joana é mais alta que Carla, quem é mais baixa?', a: ['Maria', 'Joana', 'Carla', 'Não se sabe'], c: 2 },
+        { q: 'Todas as rosas são flores. Algumas flores murcham rápido. Logo:', a: ['Todas as rosas murcham rápido', 'Algumas flores não são rosas', 'Algumas rosas podem murchar rápido', 'Nenhuma das anteriores'], c: 2 },
+        { q: 'Se mentirosos sempre mentem, e um mentiroso diz “sou um mentiroso”, então:', a: ['Ele está dizendo a verdade', 'Ele está mentindo', 'Ele não é mentiroso', 'É um paradoxo'], c: 3 },
+        { q: '“Se eu estudar, passo.” Afirmar que “passei” implica que:', a: ['Estudei', 'Não estudei', 'Talvez estudei', 'Não se pode concluir nada'], c: 3 },
+        { q: 'Se nenhum peixe voa, e todos os salmões são peixes, então:', a: ['Alguns salmões voam', 'Nenhum salmão voa', 'Todos os peixes são salmões', 'Nada pode ser concluído'], c: 1 },
+        { q: 'Se A implica B, e B é falso, então A é:', a: ['Verdadeiro', 'Falso', 'Indefinido', 'Desnecessário'], c: 1 },
+        { q: 'Todas as janelas são transparentes. Algumas coisas transparentes quebram. Logo:', a: ['Todas as janelas quebram', 'Algumas janelas podem quebrar', 'Todas as coisas quebram', 'Nada pode ser concluído'], c: 1 },
+        { q: '“Se eu correr, chego a tempo.” Você chegou a tempo. O que pode ser inferido?', a: ['Você correu', 'Você não correu', 'Não se pode concluir nada', 'Você chegou cedo demais'], c: 2 },
+        { q: 'Qual é a próxima letra na sequência: A, C, F, J, O...?', a: ['V', 'S', 'U', 'T'], c: 3 },
+        { q: 'Se algumas tartarugas são verdes e todas são lentas, então algumas coisas verdes são lentas?', a: ['Sim', 'Não', 'Talvez', 'Depende'], c: 0 },
+        { q: 'Se 1 = 5, 2 = 25, 3 = 325, 4 = 4325, então 5 = ?', a: ['54325', '54321', '5', '5325'], c: 1 },
+        { q: 'Quantos quadrados há em um tabuleiro de xadrez 8x8?', a: ['64', '100', '204', '256'], c: 2 },
+        { q: 'Qual não pertence? Gato, Cão, Avião, Rato', a: ['Gato', 'Cão', 'Avião', 'Rato'], c: 2 },
+        { q: '2, 4, 6, 8, ?', a: ['10', '9', '12', '7'], c: 0 },
+        { q: 'ABC, DEF, GHI, ?', a: ['JKL', 'LMN', 'MNO', 'NOP'], c: 0 },
+        { q: 'Se 2+3=10 e 3+4=21, então 4+5=?', a: ['32', '25', '28', '29'], c: 0 },
+        { q: '1, 4, 9, 16, ?', a: ['20', '25', '30', '22'], c: 1 },
+        { q: 'ENIGMA é para CÓDIGO assim como TRADUZIR é para ?', a: ['Ler', 'Converter', 'Falar', 'Ouvir'], c: 1 },
+        { q: 'A analogia correta: Sol é para luz como vela é para ?', a: ['calor', 'vento', 'chama', 'escuridão'], c: 2 },
+        { q: 'João é mais alto que Pedro. Pedro é mais alto que Lucas. Quem é o mais baixo?', a: ['João', 'Pedro', 'Lucas', 'Todos iguais'], c: 2 },
+        { q: 'Se hoje é terça-feira, que dia será depois de 100 dias?', a: ['Quinta', 'Sexta', 'Sábado', 'Domingo'], c: 1 },
+        { q: 'Se um avião cair na fronteira entre Brasil e Argentina, onde enterram os sobreviventes?', a: ['Argentina', 'Brasil', 'Nenhum', 'Na Fronteira'], c: 2 },
+        { q: 'Se você me tem, quer me compartilhar. Se me compartilha, não me tem mais. O que sou?', a: ['Dinheiro', 'Amor', 'Tempo', 'Segredo'], c: 3 },
+        { q: 'Qual palavra está incorreta?', a: ['cachoro', 'gato', 'livro', 'cavalo'], c: 0 },
+        { q: 'Se 5 máquinas fazem 5 itens em 5 minutos, quanto tempo levariam 100 máquinas para 100 itens?', a: ['5 minutos', '100 minutos', '10 minutos', '1 minuto'], c: 0 },
+        { q: 'Um homem tem 4 filhas, cada uma tem um irmão. Quantos filhos ele tem?', a: ['4', '5', '8', '12'], c: 1 },
+        { q: 'Um trem elétrico vai para o norte. Para onde vai a fumaça?', a: ['Norte', 'Sul', 'Leste', 'Nenhuma'], c: 3 }
+      ],
+      avancado: [
+        { q: 'Complete: 5, 10, 20, 40, ?', a: ['50', '80', '60', '100'], c: 1 },
+        { q: 'Qual é o próximo número primo após 29?', a: ['30', '31', '33', '35'], c: 1 },
+        { q: 'Se um avião cai na fronteira entre Brasil e Argentina, onde enterram os sobreviventes?', a: ['Brasil', 'Argentina', 'Nenhum', 'Fronteira'], c: 2 },
+        { q: 'O que é maior: meio quilo de chumbo ou meio quilo de algodão?', a: ['Chumbo', 'Algodão', 'Mesmo peso', 'Nenhum'], c: 2 },
+        { q: 'Se todos os Zogs são Blins e todos os Blins são Grups, então todos os Zogs são Grups. Qual a conclusão?', a: ['Verdadeiro', 'Falso', 'Indeterminado', 'Nenhuma das anteriores'], c: 0 },
+        { q: 'Ana é mais velha que Bia. Bia é mais velha que Clara. Quem é a mais nova?', a: ['Ana', 'Bia', 'Clara', 'Não é possível saber'], c: 2 },
+        { q: 'Se 3 gatos matam 3 ratos em 3 minutos, quantos gatos são necessários para matar 100 ratos em 100 minutos?', a: ['3', '9', '1', '100'], c: 0 },
+        { q: 'Em uma corrida, você ultrapassa o segundo colocado. Em que posição está agora?', a: ['Primeiro', 'Segundo', 'Terceiro', 'Quarto'], c: 1 },
+        { q: 'Se 2 relógios atrasam 5 minutos por hora, em quantas horas estarão 1 hora atrasados?', a: ['6', '10', '12', '24'], c: 2 },
+        { q: 'Qual é a próxima figura lógica: A, B, D, G, K, ?', a: ['L', 'M', 'N', 'P'], c: 2 },
+        { q: 'Se João mente nas segundas, terças e quartas, mas diz a verdade nos outros dias. Ele diz: “Amanhã mentirei”. Que dia é hoje?', a: ['Quinta', 'Domingo', 'Quarta', 'Sábado'], c: 3 },
+        { q: 'Qual número completa a lógica: 2, 4, 8, 16, ?, 64', a: ['24', '32', '48', '40'], c: 1 },
+        { q: '3 irmãos dividem 30 doces de forma proporcional às suas idades: 2, 3 e 5. Quantos doces o mais velho recebe?', a: ['10', '15', '5', '12'], c: 1 },
+        { q: 'Se hoje é terça, qual será o dia da semana daqui a 100 dias?', a: ['Quarta', 'Sábado', 'Domingo', 'Quinta'], c: 3 },
+        { q: 'Pedro sempre mente. Ele diz: "Estou mentindo agora". Isso é...', a: ['Verdadeiro', 'Falso', 'Paradoxo', 'Possível'], c: 2 },
+        { q: 'Se TODOS os livros são objetos e ALGUNS objetos são vermelhos, então...', a: ['Todos os livros são vermelhos', 'Alguns livros são vermelhos', 'Todos os objetos são livros', 'Não se pode concluir'], c: 3 },
+        { q: 'A mãe de Maria tem 4 filhas: Ana, Joana, Carla e...?', a: ['Maria', 'Lúcia', 'Joana', 'Helena'], c: 0 },
+        { q: 'Um trem elétrico vai de norte para sul. Para que lado vai a fumaça?', a: ['Leste', 'Sul', 'Nenhum', 'Norte'], c: 2 },
+        { q: 'Se 1 = 5, 2 = 25, 3 = 325, então 4 = ?', a: ['4325', '425', '1325', '43'], c: 0 },
+        { q: 'Qual número substitui o “?”: 7 + 3 x 0 + 2 = ?', a: ['9', '12', '7', '2'], c: 0 },
+        { q: 'Dois pais e dois filhos entram em um restaurante. Mas só pedem três pratos. Como isso é possível?', a: ['Um não comeu', 'São 3 pessoas', 'Um saiu', 'São gêmeos'], c: 1 },
+        { q: 'Se 5 operários constroem 5 casas em 5 dias, quantos dias 1 operário levaria para fazer 1 casa?', a: ['5', '25', '10', '1'], c: 0 },
+        { q: 'Qual figura vem a seguir: ●, ●●, ●●●, ?', a: ['●●●●●', '●●●●', '●●', '●●●●●●'], c: 1 },
+        { q: 'Dois números somam 100 e a diferença entre eles é 40. Quais são?', a: ['70 e 30', '60 e 40', '80 e 20', '90 e 10'], c: 0 },
+        { q: 'A soma de três números ímpares consecutivos é 81. Qual é o menor deles?', a: ['25', '27', '23', '29'], c: 2 },
+        { q: 'Se 1 + 2 + 3 + 4 = 10, então 2 + 3 + 4 + 5 = ?', a: ['12', '14', '16', '15'], c: 3 },
+        { q: 'Qual é o menor número que pode ser dividido por 2, 3, 4 e 5 sem deixar resto?', a: ['60', '120', '20', '30'], c: 0 },
+        { q: 'Uma jarra cheia pesa 5kg. Com metade da água, pesa 3kg. Quanto pesa a jarra vazia?', a: ['1kg', '2kg', '2.5kg', '3kg'], c: 1 },
+        { q: 'Encontre o próximo número: 1, 1, 2, 3, 5, 8, ?', a: ['11', '13', '10', '14'], c: 1 },
+        { q: 'Qual das opções mantém a lógica: 2, 6, 12, 20, ?', a: ['28', '30', '36', '40'], c: 0 },
+        { q: 'Qual número falta: 2, 10, 30, 68, ?', a: ['130', '110', '140', '100'], c: 0 },
+        { q: 'Se um pato bota um ovo na fronteira do Brasil com o Uruguai, de quem é o ovo?', a: ['Uruguai', 'Brasil', 'Do pato', 'De ninguém'], c: 3 },
+        { q: 'João é o irmão da filha do pai do meu pai. Quem é João?', a: ['Tio', 'Pai', 'Irmão', 'Avô'], c: 0 },
+        { q: 'Se amanhã é ontem do dia seguinte a terça, que dia é hoje?', a: ['Segunda', 'Terça', 'Quarta', 'Domingo'], c: 1 },
+        { q: 'Se um tijolo pesa 1kg mais meio tijolo, quanto pesa um tijolo?', a: ['1kg', '1.5kg', '2kg', '2.5kg'], c: 2 },
+        { q: 'Se você tem 8 bolas azuis, 5 vermelhas e 7 verdes em uma caixa escura, qual o número mínimo de bolas que você precisa tirar para garantir 2 bolas da mesma cor?', a: ['2', '3', '4', '5'], c: 3 },
+        { q: 'Se cada pessoa em uma sala apertar a mão de todas as outras uma vez, e houver 6 pessoas, quantos apertos de mão ocorrerão?', a: ['12', '15', '18', '30'], c: 1 },
+        { q: 'Qual o próximo termo? A1, B2, C4, D8, E16, ?', a: ['F32', 'F30', 'G32', 'F24'], c: 0 },
+        { q: 'A soma de 3 números pares consecutivos é 72. Qual é o menor?', a: ['22', '24', '20', '26'], c: 1 },
+        { q: 'Quantos segundos há em 1 hora?', a: ['3600', '6000', '1600', '3000'], c: 0 }
+      ],
+      pratica: [
+        { q: "Qual é o próximo número na sequência: 2, 6, 12, 20, 30, ...?", a: ["42", "48", "50", "44"], c: 0 },
+        { q: "Complete a sequência: 1, 3, 8, 22, 64, ...?", a: ["186", "192", "180", "188"], c: 0 },
+        { q: "Qual é o próximo número: 5, 10, 18, 28, 40, ...?", a: ["54", "56", "58", "60"], c: 1 },
+        { q: "Encontre o próximo número: 4, 7, 13, 25, 46, ...?", a: ["88", "90", "92", "94"], c: 0 },
+        { q: "Qual é o próximo número na sequência: 1, 2, 6, 24, 120, ...?", a: ["600", "720", "840", "960"], c: 1 },
+         { q: "Se todos os pinguins são aves e algumas aves não voam, podemos concluir que:", a: ["Todos os pinguins voam", "Alguns pinguins não voam", "Nenhum pinguim voa", "Nada pode ser concluído"], c: 1 },
+        { q: "Se todos os quadrados são polígonos e alguns polígonos são regulares, então:", a: ["Todos os quadrados são regulares", "Alguns quadrados são regulares", "Nenhum quadrado é regular", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum pássaro é mamífero e alguns animais são mamíferos, então:", a: ["Nenhum pássaro é animal", "Alguns pássaros são animais", "Alguns animais não são pássaros", "Nada pode ser concluído"], c: 2 },
+        { q: "Se todos os livros são objetos e alguns objetos são pesados, então:", a: ["Todos os livros são pesados", "Alguns livros são pesados", "Nenhum livro é pesado", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum peixe é réptil e todos os crocodilos são répteis, então:", a: ["Nenhum peixe é crocodilo", "Alguns peixes são crocodilos", "Todos os crocodilos são peixes", "Nada pode ser concluído"], c: 0 },
+        { q: "Se todos os professores são educadores e alguns educadores são rigorosos, então:", a: ["Todos os professores são rigorosos", "Alguns professores são rigorosos", "Nenhum professor é rigoroso", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum inseto é vertebrado e todos os pássaros são vertebrados, então:", a: ["Nenhum inseto é pássaro", "Alguns insetos são pássaros", "Todos os pássaros são insetos", "Nada pode ser concluído"], c: 0 },
+        { q: "Se todos os gatos são felinos e alguns felinos são selvagens, então:", a: ["Todos os gatos são selvagens", "Alguns gatos são selvagens", "Nenhum gato é selvagem", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum pássaro é anfíbio e alguns animais são anfíbios, então:", a: ["Nenhum pássaro é animal", "Alguns pássaros são animais", "Alguns animais não são pássaros", "Nada pode ser concluído"], c: 2 },
+        { q: "Se todos os círculos são formas e algumas formas são coloridas, então:", a: ["Todos os círculos são coloridos", "Alguns círculos são coloridos", "Nenhum círculo é colorido", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum mamífero é réptil e todos os lagartos são répteis, então:", a: ["Nenhum mamífero é lagarto", "Alguns mamíferos são lagartos", "Todos os lagartos são mamíferos", "Nada pode ser concluído"], c: 0 },
+        { q: "Se todos os estudantes são aprendizes e alguns aprendizes são dedicados, então:", a: ["Todos os estudantes são dedicados", "Alguns estudantes são dedicados", "Nenhum estudante é dedicado", "Nada pode ser concluído"], c: 1 },
+        { q: "Se nenhum peixe é mamífero e alguns animais são mamíferos, então:", a: ["Nenhum peixe é animal", "Alguns peixes são animais", "Alguns animais não são peixes", "Nada pode ser concluído"], c: 2 },
+        { q: "Se todos os triângulos são polígonos e alguns polígonos têm cinco lados, então:", a: ["Todos os triângulos têm cinco lados", "Alguns triângulos têm cinco lados", "Nenhum triângulo tem cinco lados", "Nada pode ser concluído"], c: 2 },
+        { q: "Se todos os carros são veículos e alguns veículos são elétricos, então:", a: ["Todos os carros são elétricos", "Alguns carros são elétricos", "Nenhum carro é elétrico", "Nada pode ser concluído"], c: 1 },
+        { q: "Se Ana é irmã de Beto, e Beto é filho de Carla, quem é Carla em relação a Ana?", a: ["Irmã", "Mãe", "Filha", "Não se sabe"], c: 1 },
+        { q: "Se João é pai de Maria, e Maria é irmã de Pedro, quem é João em relação a Pedro?", a: ["Irmão", "Pai", "Filho", "Não se sabe"], c: 1 },
+        { q: "Se Clara é mãe de Ana, e Ana é irmã de Beto, quem é Beto em relação a Clara?", a: ["Filho", "Irmão", "Pai", "Não se sabe"], c: 0 },
+        { q: "Se Pedro é irmão de Maria, e Maria é filha de Ana, quem é Ana em relação a Pedro?", a: ["Irmã", "Mãe", "Filha", "Não se sabe"], c: 1 },
+        { q: "Se João é pai de Beto, e Beto é irmão de Carla, quem é Carla em relação a João?", a: ["Filha", "Irmã", "Mãe", "Não se sabe"], c: 0 },
+        { q: "Se Ana é mãe de Maria, e Maria é irmã de Pedro, quem é Pedro em relação a Ana?", a: ["Filho", "Irmão", "Pai", "Não se sabe"], c: 0 },
+        { q: "Se Beto é irmão de Carla, e Carla é filha de João, quem é João em relação a Beto?", a: ["Irmão", "Pai", "Filho", "Não se sabe"], c: 1 },
+        { q: "Se Maria é irmã de Ana, e Ana é filha de Clara, quem é Clara em relação a Maria?", a: ["Irmã", "Mãe", "Filha", "Não se sabe"], c: 1 },
+        { q: "Se Pedro é pai de Beto, e Beto é irmão de Ana, quem é Ana em relação a Pedro?", a: ["Filha", "Irmã", "Mãe", "Não se sabe"], c: 0 },
+        { q: "Se João é irmão de Maria, e Maria é filha de Ana, quem é Ana em relação a João?", a: ["Irmã", "Mãe", "Filha", "Não se sabe"], c: 1 },
+        { q: "Se 'se eu estudo, passo' é verdade, e eu não estudei, o que pode ser concluído?", a: ["Passei", "Não passei", "Não se sabe", "Estudei"], c: 2 },
+        { q: "Se 'se chove, levo guarda-chuva' é verdade, e não levei guarda-chuva, então:", a: ["Choveu", "Não choveu", "Não se sabe", "Levei guarda-chuva"], c: 1 },
+        { q: "Se 'se eu corro, chego cedo' é verdade, e cheguei cedo, então:", a: ["Corri", "Não corri", "Não se sabe", "Cheguei tarde"], c: 2 },
+        { q: "Se 'se eu trabalho, ganho dinheiro' é verdade, e não ganhei dinheiro, então:", a: ["Trabalhei", "Não trabalhei", "Não se sabe", "Ganhei dinheiro"], c: 1 },
+        { q: "Se 'se eu durmo, sonho' é verdade, e não sonhei, então:", a: ["Dormi", "Não dormi", "Não se sabe", "Sonhei"], c: 1 },
+        { q: "Se 'se eu estudo, passo' é verdade, e passei, então:", a: ["Estudei", "Não estudei", "Não se sabe", "Não passei"], c: 2 },
+        { q: "Se 'se eu corro, fico cansado' é verdade, e não fiquei cansado, então:", a: ["Corri", "Não corri", "Não se sabe", "Fiquei cansado"], c: 1 },
+        { q: "Se 'se eu viajo, me divirto' é verdade, e me diverti, então:", a: ["Viajei", "Não viajei", "Não se sabe", "Não me diverti"], c: 2 },
+        { q: "Se 'se eu cozinho, como bem' é verdade, e não comi bem, então:", a: ["Cozinhei", "Não cozinhei", "Não se sabe", "Comi bem"], c: 1 },
+        { q: "Se 'se eu leio, aprendo' é verdade, e aprendi, então:", a: ["Li", "Não li", "Não se sabe", "Não aprendi"], c: 2 },
+        { q: "Se 'se eu treino, melhoro' é verdade, e não melhorei, então:", a: ["Treinei", "Não treinei", "Não se sabe", "Melhorei"], c: 1 },
+        { q: "Se 'se eu estudo, passo' é verdade, e não passei, então:", a: ["Estudei", "Não estudei", "Não se sabe", "Passei"], c: 1 },
+        { q: "Se 'se eu corro, chego cedo' é verdade, e não cheguei cedo, então:", a: ["Corri", "Não corri", "Não se sabe", "Cheguei cedo"], c: 1 },
+        { q: "Se 'se eu trabalho, ganho dinheiro' é verdade, e ganhei dinheiro, então:", a: ["Trabalhei", "Não trabalhei", "Não se sabe", "Não ganhei dinheiro"], c: 2 },
+        { q: "Se 'se eu durmo, sonho' é verdade, e sonhei, então:", a: ["Dormi", "Não dormi", "Não se sabe", "Não sonhei"], c: 2 },
+        { q: "Cachorro é para latir como pássaro é para:", a: ["Voar", "Cantar", "Nadar", "Correr"], c: 1 },
+        { q: "Sol é para dia como lua é para:", a: ["Noite", "Céu", "Estrela", "Nuvem"], c: 0 },
+        { q: "Caneta é para escrever como martelo é para:", a: ["Bater", "Cortar", "Medir", "Desenhar"], c: 0 },
+        { q: "Árvore é para madeira como vaca é para:", a: ["Leite", "Carne", "Couro", "Ossos"], c: 0 },
+        { q: "Carro é para estrada como barco é para:", a: ["Céu", "Água", "Trilho", "Areia"], c: 1 },
+        { q: "Professor é para ensinar como médico é para:", a: ["Curar", "Operar", "Diagnosticar", "Estudar"], c: 0 },
+        { q: "Lápis é para papel como pincel é para:", a: ["Tela", "Madeira", "Parede", "Vidro"], c: 0 },
+        { q: "Fogo é para calor como gelo é para:", a: ["Frio", "Água", "Vapor", "Umidade"], c: 0 },
+        { q: "Livro é para leitura como cozinha é para:", a: ["Cozinhar", "Comer", "Limpar", "Decorar"], c: 0 },
+        { q: "Sol é para brilhar como chuva é para:", a: ["Molhar", "Cair", "Evaporar", "Congelar"], c: 0 },
+        { q: "Se 4 máquinas produzem 8 peças em 2 horas, quantas máquinas produzem 16 peças em 4 horas?", a: ["2", "4", "6", "8"], c: 1 },
+        { q: "Se 5 trabalhadores constroem 10 paredes em 5 dias, quantos dias 10 trabalhadores levariam para construir 10 paredes?", a: ["2,5 dias", "5 dias", "10 dias", "15 dias"], c: 0 },
+        { q: "Se 3 pessoas dividem 18 maçãs igualmente, quantas maçãs cada uma recebe?", a: ["4", "5", "6", "7"], c: 2 },
+        { q: "Se 6 trabalhadores pintam 12 quartos em 3 dias, quantos quartos 12 trabalhadores pintam em 6 dias?", a: ["24", "36", "48", "60"], c: 2 },
+        { q: "Se 2 máquinas fazem 4 itens em 8 horas, quantas horas 4 máquinas levariam para fazer 8 itens?", a: ["4 horas", "8 horas", "12 horas", "16 horas"], c: 1 },
+        { q: "Se 8 pessoas dividem 24 bolos igualmente, quantos bolos cada uma recebe?", a: ["2", "3", "4", "5"], c: 1 },
+        { q: "Se 3 máquinas produzem 9 peças em 6 horas, quantas peças 6 máquinas produzem em 12 horas?", a: ["18", "27", "36", "45"], c: 2 },
+        { q: "Se 5 trabalhadores constroem 5 casas em 10 dias, quantos dias 10 trabalhadores levariam para construir 10 casas?", a: ["5 dias", "10 dias", "15 dias", "20 dias"], c: 1 },
+        { q: "Se 4 pessoas dividem 16 chocolates igualmente, quantos chocolates cada uma recebe?", a: ["2", "3", "4", "5"], c: 2 },
+        { q: "Se 6 máquinas produzem 12 peças em 4 horas, quantas máquinas produzem 24 peças em 8 horas?", a: ["3", "6", "9", "12"], c: 1 },
+        { q: "Se 7 trabalhadores constroem 14 paredes em 7 dias, quantos dias 14 trabalhadores levariam para construir 14 paredes?", a: ["3,5 dias", "7 dias", "10 dias", "14 dias"], c: 0 },
+        { q: "Se 3 pessoas dividem 15 livros igualmente, quantos livros cada uma recebe?", a: ["3", "4", "5", "6"], c: 2 },
+        { q: "Se 5 máquinas produzem 10 peças em 5 horas, quantas peças 10 máquinas produzem em 10 horas?", a: ["20", "30", "40", "50"], c: 2 },
+        { q: "Se 6 trabalhadores pintam 18 quartos em 9 dias, quantos quartos 12 trabalhadores pintam em 18 dias?", a: ["36", "54", "72", "90"], c: 2 },
+        { q: "Se 4 máquinas produzem 8 peças em 4 horas, quantas horas 8 máquinas levariam para produzir 16 peças?", a: ["4 horas", "8 horas", "12 horas", "16 horas"], c: 0 }
+      ]
+    };
+
+    const totalPorNivel = {
+      iniciante: 5,
+      intermediario: 10,
+      avancado: 20,
+      pratica: 15
+    };
+
+    const limiteQI = {
+      iniciante: [0, 60],
+      intermediario: [0, 110],
+      avancado: [0, 160]
+    };
+
+    let perguntasSelecionadas = [];
+    let index = 0;
+    let pontos = 0;
+    let nivelSelecionado = "";
+    let modoPratica = false;
+    let chart;
+    let tempoRestante = null;
+    let timerId;
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+
+    function iniciarTemporizador() {
+      if (nivelSelecionado !== 'avancado' || modoPratica) return;
+      clearInterval(timerId);
+      tempoRestante = 20;
+      const timerDiv = document.getElementById('timer') || document.createElement('div');
+      timerDiv.id = 'timer';
+      document.getElementById('quiz').prepend(timerDiv);
+      timerDiv.innerHTML = `Tempo restante: ${tempoRestante}s`;
+      timerId = setInterval(() => {
+        tempoRestante--;
+        timerDiv.innerHTML = `Tempo restante: ${tempoRestante}s`;
+        if (tempoRestante <= 0) {
+          clearInterval(timerId);
+          index++;
+          mostrarPergunta();
+        }
+      }, 1000);
+    }
+
+    function iniciarTeste() {
+      modoPratica = document.getElementById('modo').value === 'pratica';
+      nivelSelecionado = modoPratica ? 'pratica' : document.getElementById('nivel').value;
+      document.getElementById('opcoesIniciais').style.display = 'none';
+      document.getElementById('btnVoltar').style.display = 'block';
+      perguntasSelecionadas = shuffle([...perguntasPorNivel[nivelSelecionado]]).slice(0, totalPorNivel[nivelSelecionado]);
+      index = 0;
+      pontos = 0;
+      document.getElementById('quiz').classList.remove('fade-in');
+      mostrarPergunta();
+    }
+
+    function mostrarPergunta() {
+      if (index >= perguntasSelecionadas.length) {
+        clearInterval(timerId);
+        mostrarResultado();
+        return;
+      }
+      const pergunta = perguntasSelecionadas[index];
+      const quizDiv = document.getElementById('quiz');
+      quizDiv.classList.add('fade-in');
+      quizDiv.innerHTML = `
+        <div class="question-number">Pergunta ${index + 1} de ${totalPorNivel[nivelSelecionado]}</div>
+        <div class="question">${pergunta.q}</div>
+        <div class="options">
+          ${pergunta.a.map((opcao, i) => `<button onclick="responder(${i})">${opcao}</button>`).join('')}
+        </div>
+      `;
+      setTimeout(() => quizDiv.classList.remove('fade-in'), 500);
+      if (nivelSelecionado === 'avancado' && !modoPratica) {
+        iniciarTemporizador();
+      }
+    }
+
+    function responder(resposta) {
+      clearInterval(timerId);
+      const pergunta = perguntasSelecionadas[index];
+      const quizDiv = document.getElementById('quiz');
+      const isCorreto = resposta === pergunta.c;
+      if (modoPratica) {
+        quizDiv.innerHTML += `
+          <div style="color: ${isCorreto ? '#0f0' : '#f00'}; margin-top: 10px;">
+            ${isCorreto ? 'Correto!' : `Errado! A resposta correta era: ${pergunta.a[pergunta.c]}`}
+          </div>
+        `;
+        if (isCorreto) pontos++;
+        setTimeout(() => {
+          index++;
+          mostrarPergunta();
+        }, 2000);
+      } else {
+        if (isCorreto) pontos++;
+        index++;
+        mostrarPergunta();
+      }
+    }
+
+    function mostrarResultado() {
+      const quizDiv = document.getElementById('quiz');
+      quizDiv.innerHTML = '';
+      const resultadoDiv = document.getElementById('resultado');
+      const canvas = document.getElementById('graficoQI');
+
+      if (modoPratica) {
+        resultadoDiv.innerHTML = `Modo Prática concluído! Você acertou ${pontos} de ${totalPorNivel[nivelSelecionado]} perguntas.`;
+        canvas.style.display = 'none';
+        if (chart) {
+          chart.destroy();
+          chart = null;
+        }
+        return;
+      }
+
+      canvas.style.display = 'block';
+      const maxPontos = totalPorNivel[nivelSelecionado];
+      const [minQI, maxQI] = limiteQI[nivelSelecionado];
+      const qiEstimado = Math.round(minQI + (pontos / maxPontos) * (maxQI - minQI));
+
+      resultadoDiv.innerHTML = `Você acertou ${pontos} de ${totalPorNivel[nivelSelecionado]} perguntas!<br>Seu QI estimado é: ${qiEstimado}`;
+
+      if (chart) {
+        chart.destroy();
+      }
+
+      chart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: ['Seu QI', 'Máximo'],
+          datasets: [{
+            label: 'QI',
+            data: [qiEstimado, maxQI],
+            backgroundColor: ['#0ff', '#f00'],
+            borderColor: ['#000'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true,
+              max: maxQI + 10,
+              ticks: { color: '#fff' },
+              grid: { color: '#444' }
+            },
+            x: {
+              ticks: { color: '#fff' },
+              grid: { color: '#444' }
+            }
+          },
+          plugins: {
+            legend: { labels: { color: '#fff' } }
+          }
+        }
+      });
+    }
+
+    function voltarMenu() {
+  clearInterval(timerId);
+  document.getElementById('opcoesIniciais').style.display = 'block';
+  document.getElementById('btnVoltar').style.display = 'none';
+  const quizDiv = document.getElementById('quiz');
+  quizDiv.innerHTML = '';
+  quizDiv.classList.remove('fade-in');
+  document.getElementById('resultado').innerHTML = '';
+  document.getElementById('graficoQI').style.display = 'none';
+  if (chart) {
+    chart.destroy();
+    chart = null;
+  }
+  perguntasSelecionadas = [];
+  index = 0;
+  pontos = 0;
+  nivelSelecionado = "";
+  modoPratica = false;
+  tempoRestante = null;
+    }
+  </script>
+</body>
+</html>
