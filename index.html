@@ -388,7 +388,7 @@
     function iniciarTemporizador() {
       if (nivelSelecionado !== 'avancado' || modoPratica) return;
       clearInterval(timerId);
-      tempoRestante = 20;
+      tempoRestante = 30;
       const timerDiv = document.getElementById('timer') || document.createElement('div');
       timerDiv.id = 'timer';
       document.getElementById('quiz').prepend(timerDiv);
